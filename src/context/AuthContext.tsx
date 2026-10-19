@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { supabase, isSupabaseConfigured } from '../lib/supabase';
+import { getAuthRedirectUrl, supabase, isSupabaseConfigured } from '../lib/supabase';
 import { UserProfile } from '../types';
 import { storageService } from '../services/storageService';
 
@@ -8,8 +8,12 @@ interface AuthContextType {
   profile: UserProfile;
   isLoading: boolean;
   isSupabaseConnected: boolean;
-  signIn: (email: string, password?: string) => Promise<{ success: boolean; error?: string }>;
-  signUp: (email: string, password?: string, displayName?: string) => Promise<{ success: boolean; error?: string }>;
+  signIn: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  signUp: (email: string, password: string, displayName?: string) => Promise<{
+    success: boolean;
+    error?: string;
+    requiresEmailConfirmation?: boolean;
+  }>;
   signOut: () => Promise<void>;
   updateProfile: (profile: Partial<UserProfile>) => void;
 }
@@ -23,131 +27,121 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     let mounted = true;
-
-    async function initAuth() {
-      if (isSupabaseConfigured) {
-        try {
-          const { data: { session } } = await supabase.auth.getSession();
-          if (mounted) {
-            setUser(session?.user || null);
-            if (session?.user) {
-              setProfile((prev) => ({
-                ...prev,
-                id: session.user.id,
-                email: session.user.email || prev.email,
-              }));
-            }
-          }
-
-          const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-            if (mounted) {
-              setUser(session?.user || null);
-              if (session?.user) {
-                setProfile((prev) => ({
-                  ...prev,
-                  id: session.user.id,
-                  email: session.user.email || prev.email,
-                }));
-              }
-            }
-          });
-
-          return () => {
-            subscription.unsubscribe();
-          };
-        } catch (e) {
-          console.warn('Supabase auth initialization error, using local fallback:', e);
-        }
-      } else {
-        // Fallback local user
-        const localProf = storageService.getProfile();
-        setUser({
-          id: localProf.id,
-          email: localProf.email,
-          user_metadata: { display_name: localProf.displayName },
-        });
+    const applySession = (session: Awaited<ReturnType<typeof supabase.auth.getSession>>['data']['session']) => {
+      if (!mounted) return;
+      setUser(session?.user || null);
+      if (session?.user) {
+        setProfile((prev) => ({
+          ...prev,
+          id: session.user.id,
+          email: session.user.email || prev.email,
+          displayName: session.user.user_metadata.display_name || prev.displayName,
+        }));
       }
+    };
 
-      if (mounted) setIsLoading(false);
+    if (!isSupabaseConfigured) {
+      setUser(null);
+      setIsLoading(false);
+      return () => {
+        mounted = false;
+      };
     }
 
-    initAuth();
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      applySession(session);
+    });
+
+    supabase.auth.getSession()
+      .then(({ data: { session }, error }) => {
+        if (error) throw error;
+        applySession(session);
+      })
+      .catch((error: unknown) => {
+        console.warn('Supabase auth initialization error:', error);
+      })
+      .finally(() => {
+        if (mounted) setIsLoading(false);
+      });
 
     return () => {
       mounted = false;
+      subscription.unsubscribe();
     };
   }, []);
 
-  const signIn = async (email: string, password?: string): Promise<{ success: boolean; error?: string }> => {
+  const signIn = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
+    if (!isSupabaseConfigured) {
+      return { success: false, error: 'Email and password sign-in is unavailable until Supabase is configured.' };
+    }
+
     setIsLoading(true);
     try {
-      if (isSupabaseConfigured && password) {
-        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) {
-          setIsLoading(false);
-          return { success: false, error: error.message };
-        }
-        setUser(data.user);
-        const updated = storageService.updateProfile({ email, id: data.user.id });
-        setProfile(updated);
-        setIsLoading(false);
-        return { success: true };
-      } else {
-        // Local mode sign in
-        const updated = storageService.updateProfile({ email, displayName: email.split('@')[0] });
-        setUser({ id: updated.id, email, user_metadata: { display_name: updated.displayName } });
-        setProfile(updated);
-        setIsLoading(false);
-        return { success: true };
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) {
+        return { success: false, error: error.message };
       }
-    } catch (err: any) {
+      if (!data.user) {
+        return { success: false, error: 'Sign-in did not return a user. Please try again.' };
+      }
+      setUser(data.user);
+      const updated = storageService.updateProfile({
+        email: data.user.email || email,
+        id: data.user.id,
+        displayName: data.user.user_metadata.display_name || email.split('@')[0],
+      });
+      setProfile(updated);
+      return { success: true };
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Authentication failed';
+      return { success: false, error: message };
+    } finally {
       setIsLoading(false);
-      return { success: false, error: err.message || 'Authentication failed' };
     }
   };
 
   const signUp = async (
     email: string,
-    password?: string,
+    password: string,
     displayName?: string
-  ): Promise<{ success: boolean; error?: string }> => {
+  ): Promise<{ success: boolean; error?: string; requiresEmailConfirmation?: boolean }> => {
+    if (!isSupabaseConfigured) {
+      return { success: false, error: 'Email and password sign-up is unavailable until Supabase is configured.' };
+    }
+
     setIsLoading(true);
     try {
-      if (isSupabaseConfigured && password) {
-        const { data, error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: { data: { display_name: displayName || email.split('@')[0] } },
-        });
-        if (error) {
-          setIsLoading(false);
-          return { success: false, error: error.message };
-        }
-        setUser(data.user);
-        if (data.user) {
-          const updated = storageService.updateProfile({
-            id: data.user.id,
-            email,
-            displayName: displayName || email.split('@')[0],
-          });
-          setProfile(updated);
-        }
-        setIsLoading(false);
-        return { success: true };
-      } else {
-        // Local mode sign up
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: { display_name: displayName || email.split('@')[0] },
+          emailRedirectTo: getAuthRedirectUrl(),
+        },
+      });
+      if (error) {
+        return { success: false, error: error.message };
+      }
+      if (!data.user) {
+        return { success: false, error: 'Account creation did not return a user. Please try again.' };
+      }
+
+      if (data.session) {
+        setUser(data.session.user);
         const updated = storageService.updateProfile({
-          email,
+          id: data.user.id,
+          email: data.user.email || email,
           displayName: displayName || email.split('@')[0],
         });
-        setUser({ id: updated.id, email, user_metadata: { display_name: updated.displayName } });
         setProfile(updated);
-        setIsLoading(false);
-        return { success: true };
       }
-    } catch (err: any) {
+
+      return { success: true, requiresEmailConfirmation: !data.session };
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Sign up failed';
+      return { success: false, error: message };
+    } finally {
       setIsLoading(false);
-      return { success: false, error: err.message || 'Sign up failed' };
     }
   };
 

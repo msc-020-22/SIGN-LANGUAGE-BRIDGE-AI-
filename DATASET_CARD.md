@@ -8,6 +8,8 @@
 ## 1. Dataset Summary
 Sign Language MNIST is an established computer vision benchmark designed for static hand gesture recognition. It maps 24 static American Sign Language (ASL) alphabet letters onto a standardized 28×28 grayscale pixel format, directly analogous to the classic MNIST digits and Fashion-MNIST datasets.
 
+**Source:** [Sign Language MNIST on Kaggle](https://www.kaggle.com/datasets/datamunge/sign-language-mnist) (dataset owner: datamunge) · **License:** CC0: Public Domain.
+
 ---
 
 ## 2. Dataset Structure

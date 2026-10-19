@@ -18,6 +18,7 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -29,12 +30,17 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({
 
     setIsSubmitting(true);
     setError(null);
+    setNotice(null);
 
     const res = await signUp(email, password, displayName);
     setIsSubmitting(false);
 
     if (res.success) {
-      onSuccess();
+      if (res.requiresEmailConfirmation) {
+        setNotice('Account created. Check your email to confirm your address, then sign in.');
+      } else {
+        onSuccess();
+      }
     } else {
       setError(res.error || 'Failed to create account.');
     }
@@ -63,6 +69,19 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({
             <div className="p-3.5 rounded-xl bg-red-50 border border-red-200 text-red-800 text-xs flex items-center space-x-2">
               <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
               <span>{error}</span>
+            </div>
+          )}
+
+          {notice && (
+            <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs flex items-center space-x-2">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+              <span>{notice}</span>
+            </div>
+          )}
+
+          {!isSupabaseConnected && (
+            <div className="p-3 rounded-xl bg-[#F2F7FD] border border-[#DCE5F0] text-[11px] text-gray-600">
+              <b>Email/password sign-up is not configured.</b> Add your Supabase project URL and anon key to enable accounts.
             </div>
           )}
 
@@ -107,6 +126,8 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Minimum 6 characters"
                   className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-[#DCE5F0] text-xs font-medium focus:ring-2 focus:ring-[#2878E5] focus:outline-hidden"
+                  minLength={6}
+                  required
                 />
               </div>
             </div>

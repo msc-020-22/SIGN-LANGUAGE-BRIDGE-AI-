@@ -18,18 +18,25 @@ export const ResetPasswordPage: React.FC<ResetPasswordPageProps> = ({ onSuccess 
       return;
     }
 
-    if (isSupabaseConfigured) {
+    if (!isSupabaseConfigured) {
+      setError('Password reset is unavailable until Supabase is configured.');
+      return;
+    }
+
+    try {
       const { error: updateErr } = await supabase.auth.updateUser({ password: newPassword });
       if (updateErr) {
         setError(updateErr.message);
         return;
       }
-    }
 
-    setIsSuccess(true);
-    setTimeout(() => {
-      onSuccess();
-    }, 2000);
+      setIsSuccess(true);
+      setTimeout(() => {
+        onSuccess();
+      }, 2000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to update your password.');
+    }
   };
 
   return (
@@ -56,6 +63,7 @@ export const ResetPasswordPage: React.FC<ResetPasswordPageProps> = ({ onSuccess 
                     onChange={(e) => setNewPassword(e.target.value)}
                     placeholder="Minimum 6 characters"
                     className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-[#DCE5F0] text-xs font-medium focus:ring-2 focus:ring-[#2878E5] focus:outline-hidden"
+                    minLength={6}
                     required
                   />
                 </div>

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Mail, ArrowLeft, CheckCircle2 } from 'lucide-react';
-import { supabase, isSupabaseConfigured } from '../../lib/supabase';
+import { getAuthRedirectUrl, supabase, isSupabaseConfigured } from '../../lib/supabase';
 
 interface ForgotPasswordPageProps {
   onBackToSignIn: () => void;
@@ -15,16 +15,23 @@ export const ForgotPasswordPage: React.FC<ForgotPasswordPageProps> = ({ onBackTo
     e.preventDefault();
     if (!email) return;
 
-    if (isSupabaseConfigured) {
+    if (!isSupabaseConfigured) {
+      setError('Password recovery is unavailable until Supabase is configured.');
+      return;
+    }
+
+    try {
       const { error: resetErr } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: window.location.origin,
+        redirectTo: getAuthRedirectUrl(),
       });
       if (resetErr) {
         setError(resetErr.message);
         return;
       }
+      setSubmitted(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to send the password recovery email.');
     }
-    setSubmitted(true);
   };
 
   return (

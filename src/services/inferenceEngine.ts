@@ -1,15 +1,19 @@
-import * as tf from '@tensorflow/tfjs';
+import * as tf from '@tensorflow/tfjs-core';
+import '@tensorflow/tfjs-backend-cpu';
+import '@tensorflow/tfjs-backend-webgl';
+import '@tensorflow/tfjs-converter';
+import { loadLayersModel, type LayersModel } from '@tensorflow/tfjs-layers';
 import { PredictionResult } from '../types';
 import { CLASS_NAMES } from '../data/aslAlphabet';
 import { storageService } from './storageService';
 
 class InferenceEngine {
-  private model: tf.LayersModel | null = null;
+  private model: LayersModel | null = null;
   private isModelLoading = false;
-  private loadPromise: Promise<tf.LayersModel> | null = null;
+  private loadPromise: Promise<LayersModel> | null = null;
   private isWarmedUp = false;
 
-  async loadModel(): Promise<tf.LayersModel> {
+  async loadModel(): Promise<LayersModel> {
     if (this.model) {
       return this.model;
     }
@@ -22,7 +26,7 @@ class InferenceEngine {
     this.loadPromise = (async () => {
       try {
         console.log('[InferenceEngine] Loading model from /models/model.json...');
-        const loadedModel = await tf.loadLayersModel('/models/model.json');
+        const loadedModel = await loadLayersModel('/models/model.json');
         this.model = loadedModel;
         this.isModelLoading = false;
         console.log('[InferenceEngine] Model loaded successfully.');

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Mail, Lock, ArrowRight, AlertCircle, Sparkles } from 'lucide-react';
+import { Mail, Lock, ArrowRight, AlertCircle } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
 interface SignInPageProps {
@@ -69,7 +69,7 @@ export const SignInPage: React.FC<SignInPageProps> = ({
 
           {!isSupabaseConnected && (
             <div className="p-3 rounded-xl bg-[#F2F7FD] border border-[#DCE5F0] text-[11px] text-gray-600">
-              💡 <b>Local Neural Mode:</b> You can sign in with any email to instantly create or access your local communicator session.
+              <b>Email/password sign-in is not configured.</b> Add your Supabase project URL and anon key to enable accounts.
             </div>
           )}
 
@@ -108,6 +108,8 @@ export const SignInPage: React.FC<SignInPageProps> = ({
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
                   className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-[#DCE5F0] text-xs font-medium focus:ring-2 focus:ring-[#2878E5] focus:outline-hidden"
+                  minLength={6}
+                  required
                 />
               </div>
             </div>

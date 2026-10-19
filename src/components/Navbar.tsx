@@ -123,11 +123,11 @@ export const Navbar: React.FC<NavbarProps> = ({
 
           {/* Connection status indicator */}
           <div 
-            title={isSupabaseConnected ? "Connected to Supabase cloud database" : "Operating in fast local offline mode"}
+            title={isSupabaseConnected ? "Connected to Supabase cloud database" : "Email/password authentication is not configured"}
             className="hidden lg:flex items-center space-x-1 px-2.5 py-1 rounded-full text-xs font-medium border border-[#DCE5F0] bg-[#F2F7FD] text-gray-600"
           >
             <span className={`w-2 h-2 rounded-full ${isSupabaseConnected ? 'bg-emerald-500' : 'bg-[#35C6D4]'}`}></span>
-            <span>{isSupabaseConnected ? 'Supabase Sync' : 'Local Neural Mode'}</span>
+            <span>{isSupabaseConnected ? 'Supabase Sync' : 'Auth Not Configured'}</span>
           </div>
 
           {/* User Menu */}

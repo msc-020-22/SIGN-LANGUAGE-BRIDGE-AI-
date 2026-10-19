@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { Navbar } from './components/Navbar';
 import { Sidebar } from './components/Sidebar';
@@ -29,10 +29,19 @@ import { ForgotPasswordPage } from './pages/auth/ForgotPasswordPage';
 import { ResetPasswordPage } from './pages/auth/ResetPasswordPage';
 
 const AppContent: React.FC = () => {
-  const { user } = useAuth();
+  const { user, isLoading } = useAuth();
   const [currentTab, setCurrentTab] = useState<string>('dashboard');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
   const [isDownloadModalOpen, setIsDownloadModalOpen] = useState<boolean>(false);
+
+  useEffect(() => {
+    const authParams = new URLSearchParams(window.location.hash.slice(1));
+    if (authParams.get('type') === 'recovery') {
+      setCurrentTab('reset-password');
+    }
+  }, []);
+
+  if (isLoading) return null;
 
   // If on landing or auth flows
   if (currentTab === 'landing') {
@@ -73,6 +82,17 @@ const AppContent: React.FC = () => {
 
   if (currentTab === 'reset-password') {
     return <ResetPasswordPage onSuccess={() => setCurrentTab('dashboard')} />;
+  }
+
+  if (!user) {
+    return (
+      <LandingPage
+        onStartCommunicating={() => setCurrentTab('signin')}
+        onSignIn={() => setCurrentTab('signin')}
+        onSignUp={() => setCurrentTab('signup')}
+        onLearnMore={() => setCurrentTab('signin')}
+      />
+    );
   }
 
   // Authenticated workspace shell

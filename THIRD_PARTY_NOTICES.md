@@ -8,8 +8,8 @@ This project incorporates and builds upon open-source software and benchmark dat
 - **Usage:** In-browser and Node.js neural network execution and tensor operations.
 
 ### 2. Sign Language MNIST Dataset
-- **License:** Open Database License (ODbL) / CC0 Public Domain
-- **Origin:** Modified from original hands-in-gesture photographic recordings by Kaggle/GitHub community contributors.
+- **License:** CC0: Public Domain
+- **Origin:** [Sign Language MNIST on Kaggle](https://www.kaggle.com/datasets/datamunge/sign-language-mnist), provided by datamunge.
 - **Usage:** Training and evaluation benchmark for static 24-class ASL alphabet recognition.
 
 ### 3. Lucide Icons

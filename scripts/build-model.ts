@@ -1,4 +1,8 @@
-import * as tf from '@tensorflow/tfjs';
+import * as tf from '@tensorflow/tfjs-core';
+import '@tensorflow/tfjs-backend-cpu';
+import '@tensorflow/tfjs-backend-webgl';
+import '@tensorflow/tfjs-converter';
+import * as tfLayers from '@tensorflow/tfjs-layers';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -62,11 +66,11 @@ function loadCsvData(filePath: string, maxSamples?: number): { xs: tf.Tensor4D; 
   return { xs, ys, sampleCount: validCount };
 }
 
-export function createImprovedCNN(): tf.Sequential {
-  const model = tf.sequential();
+export function createImprovedCNN(): tfLayers.Sequential {
+  const model = tfLayers.sequential();
 
   // Block 1
-  model.add(tf.layers.conv2d({
+  model.add(tfLayers.layers.conv2d({
     inputShape: [28, 28, 1],
     filters: 32,
     kernelSize: 3,
@@ -74,40 +78,40 @@ export function createImprovedCNN(): tf.Sequential {
     activation: 'relu',
     kernelInitializer: 'heNormal',
   }));
-  model.add(tf.layers.batchNormalization());
-  model.add(tf.layers.maxPooling2d({ poolSize: [2, 2] }));
-  model.add(tf.layers.dropout({ rate: 0.2 }));
+  model.add(tfLayers.layers.batchNormalization());
+  model.add(tfLayers.layers.maxPooling2d({ poolSize: [2, 2] }));
+  model.add(tfLayers.layers.dropout({ rate: 0.2 }));
 
   // Block 2
-  model.add(tf.layers.conv2d({
+  model.add(tfLayers.layers.conv2d({
     filters: 64,
     kernelSize: 3,
     padding: 'same',
     activation: 'relu',
     kernelInitializer: 'heNormal',
   }));
-  model.add(tf.layers.batchNormalization());
-  model.add(tf.layers.maxPooling2d({ poolSize: [2, 2] }));
-  model.add(tf.layers.dropout({ rate: 0.25 }));
+  model.add(tfLayers.layers.batchNormalization());
+  model.add(tfLayers.layers.maxPooling2d({ poolSize: [2, 2] }));
+  model.add(tfLayers.layers.dropout({ rate: 0.25 }));
 
   // Block 3
-  model.add(tf.layers.conv2d({
+  model.add(tfLayers.layers.conv2d({
     filters: 128,
     kernelSize: 3,
     padding: 'same',
     activation: 'relu',
     kernelInitializer: 'heNormal',
   }));
-  model.add(tf.layers.batchNormalization());
-  model.add(tf.layers.maxPooling2d({ poolSize: [2, 2] }));
-  model.add(tf.layers.dropout({ rate: 0.3 }));
+  model.add(tfLayers.layers.batchNormalization());
+  model.add(tfLayers.layers.maxPooling2d({ poolSize: [2, 2] }));
+  model.add(tfLayers.layers.dropout({ rate: 0.3 }));
 
   // Classifier head
-  model.add(tf.layers.flatten());
-  model.add(tf.layers.dense({ units: 256, activation: 'relu', kernelInitializer: 'heNormal' }));
-  model.add(tf.layers.batchNormalization());
-  model.add(tf.layers.dropout({ rate: 0.4 }));
-  model.add(tf.layers.dense({ units: 24, activation: 'softmax' }));
+  model.add(tfLayers.layers.flatten());
+  model.add(tfLayers.layers.dense({ units: 256, activation: 'relu', kernelInitializer: 'heNormal' }));
+  model.add(tfLayers.layers.batchNormalization());
+  model.add(tfLayers.layers.dropout({ rate: 0.4 }));
+  model.add(tfLayers.layers.dense({ units: 24, activation: 'softmax' }));
 
   model.compile({
     optimizer: tf.train.adam(0.001),
@@ -168,7 +172,7 @@ async function main() {
   const avgLatencyMs = evalDurationMs / testData.sampleCount;
 
   // True labels
-  const trueLabelsTensor = testData.ys.argMax(1);
+  const trueLabelsTensor = tf.argMax(testData.ys, 1);
   const trueLabels = await trueLabelsTensor.array() as number[];
 
   // Confusion matrix and metrics computation
