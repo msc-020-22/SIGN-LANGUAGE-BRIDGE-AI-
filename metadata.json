@@ -1,0 +1,10 @@
+{
+  "name": "Sign Language Bridge AI (SLB AI)",
+  "description": "Real-time sign language recognition, dual-conversation translation, learning, and accessibility platform powered by neural network computer vision.",
+  "requestFramePermissions": [
+    "camera"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
