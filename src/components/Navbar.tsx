@@ -130,16 +130,6 @@ export const Navbar: React.FC<NavbarProps> = ({
             <span>{isSupabaseConnected ? 'Supabase Sync' : 'Auth Not Configured'}</span>
           </div>
 
-          {/* Sign In CTA if guest */}
-          {!user && (
-            <button
-              onClick={() => onSelectTab('signin')}
-              className="px-3 py-1.5 rounded-xl bg-[#123B70] hover:bg-[#2878E5] text-white text-xs font-bold transition-all shadow-xs"
-            >
-              Sign In
-            </button>
-          )}
-
           {/* User Menu */}
           <div className="relative">
             <button
@@ -148,10 +138,10 @@ export const Navbar: React.FC<NavbarProps> = ({
               aria-label="User account menu"
             >
               <div className="w-8 h-8 rounded-lg bg-[#2878E5] text-white font-bold flex items-center justify-center text-sm">
-                {profile.displayName?.charAt(0).toUpperCase() || 'U'}
+                {(profile.displayName || profile.email || 'U').charAt(0).toUpperCase()}
               </div>
               <span className="text-sm font-semibold text-[#172B45] hidden sm:block max-w-[120px] truncate">
-                {user ? (profile.displayName || 'Communicator') : 'Guest User'}
+                {profile.displayName || profile.email?.split('@')[0] || 'User'}
               </span>
               <ChevronDown className="w-4 h-4 text-gray-500 hidden sm:block" />
             </button>
@@ -227,30 +217,17 @@ export const Navbar: React.FC<NavbarProps> = ({
                   </button>
 
                   <div className="border-t border-[#DCE5F0] mt-1 pt-1">
-                    {user ? (
-                      <button
-                        onClick={async () => {
-                          setProfileDropdownOpen(false);
-                          await signOut();
-                          onSelectTab('landing');
-                        }}
-                        className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center space-x-2"
-                      >
-                        <LogOut className="w-4 h-4" />
-                        <span>Sign Out</span>
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() => {
-                          setProfileDropdownOpen(false);
-                          onSelectTab('signin');
-                        }}
-                        className="w-full text-left px-4 py-2 text-sm text-[#2878E5] font-bold hover:bg-[#F2F7FD] flex items-center space-x-2"
-                      >
-                        <User className="w-4 h-4" />
-                        <span>Sign In / Create Account</span>
-                      </button>
-                    )}
+                    <button
+                      onClick={async () => {
+                        setProfileDropdownOpen(false);
+                        await signOut();
+                        onSelectTab('signin');
+                      }}
+                      className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center space-x-2"
+                    >
+                      <LogOut className="w-4 h-4" />
+                      <span>Sign Out</span>
+                    </button>
                   </div>
                 </div>
               </>

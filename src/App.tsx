@@ -30,7 +30,11 @@ import { ResetPasswordPage } from './pages/auth/ResetPasswordPage';
 
 const AppContent: React.FC = () => {
   const { user, isLoading } = useAuth();
-  const [currentTab, setCurrentTab] = useState<string>('dashboard');
+  const [currentTab, setCurrentTab] = useState<string>(() => {
+    const authParams = new URLSearchParams(window.location.hash.slice(1));
+    if (authParams.get('type') === 'recovery') return 'reset-password';
+    return 'landing';
+  });
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
   const [isDownloadModalOpen, setIsDownloadModalOpen] = useState<boolean>(false);
 
@@ -43,14 +47,29 @@ const AppContent: React.FC = () => {
 
   if (isLoading) return null;
 
+  // Public authentication routes
+  const isAuthRoute = ['landing', 'signin', 'signup', 'forgot-password', 'reset-password'].includes(currentTab);
+
+  // Strict email authentication guard: visitors must sign in with email to access workspace
+  if (!user && !isAuthRoute) {
+    return (
+      <SignInPage
+        onSuccess={() => setCurrentTab('dashboard')}
+        onNavigateToSignUp={() => setCurrentTab('signup')}
+        onNavigateToForgotPassword={() => setCurrentTab('forgot-password')}
+        onBackToLanding={() => setCurrentTab('landing')}
+      />
+    );
+  }
+
   // If on landing or auth flows
   if (currentTab === 'landing') {
     return (
       <LandingPage
-        onStartCommunicating={() => setCurrentTab('translator')}
+        onStartCommunicating={() => setCurrentTab(user ? 'translator' : 'signin')}
         onSignIn={() => setCurrentTab('signin')}
         onSignUp={() => setCurrentTab('signup')}
-        onLearnMore={() => setCurrentTab('learn')}
+        onLearnMore={() => setCurrentTab(user ? 'learn' : 'signin')}
       />
     );
   }

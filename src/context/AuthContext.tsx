@@ -14,7 +14,6 @@ interface AuthContextType {
     error?: string;
     requiresEmailConfirmation?: boolean;
   }>;
-  signInAsGuest: (customEmail?: string) => void;
   resendConfirmation: (email: string) => Promise<{ success: boolean; error?: string }>;
   signOut: () => Promise<void>;
   updateProfile: (profile: Partial<UserProfile>) => void;
@@ -40,23 +39,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           displayName: session.user.user_metadata?.display_name || prev.displayName,
         }));
       } else {
-        // Check if there was a saved local session in storageService
-        const savedProfile = storageService.getProfile();
-        if (savedProfile && savedProfile.id && savedProfile.email && savedProfile.id !== 'local_user_1') {
-          setUser({ id: savedProfile.id, email: savedProfile.email, user_metadata: { display_name: savedProfile.displayName } });
-        } else {
-          setUser(null);
-        }
+        setUser(null);
       }
     };
 
     if (!isSupabaseConfigured) {
-      const savedProfile = storageService.getProfile();
-      if (savedProfile?.id && savedProfile.email && savedProfile.id !== 'local_user_1') {
-        setUser({ id: savedProfile.id, email: savedProfile.email, user_metadata: { display_name: savedProfile.displayName } });
-      } else {
-        setUser(null);
-      }
+      setUser(null);
       setIsLoading(false);
       return () => {
         mounted = false;
@@ -177,24 +165,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const signInAsGuest = (customEmail?: string) => {
-    const targetEmail = customEmail?.trim() || 'jonathanzimunya773@gmail.com';
-    const guestUser = {
-      id: `guest_${Date.now()}`,
-      email: targetEmail,
-      user_metadata: {
-        display_name: targetEmail.split('@')[0],
-      },
-    };
-    setUser(guestUser);
-    const updated = storageService.updateProfile({
-      id: guestUser.id,
-      email: targetEmail,
-      displayName: guestUser.user_metadata.display_name,
-    });
-    setProfile(updated);
-  };
-
   const signOut = async (): Promise<void> => {
     if (isSupabaseConfigured) {
       try {
@@ -219,7 +189,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isSupabaseConnected: isSupabaseConfigured,
         signIn,
         signUp,
-        signInAsGuest,
         resendConfirmation,
         signOut,
         updateProfile,

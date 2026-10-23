@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Mail, Lock, User, ArrowRight, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { SupabaseDiagnostic } from '../../components/SupabaseDiagnostic';
 
 interface SignUpPageProps {
   onSuccess: () => void;
@@ -37,12 +38,19 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({
 
     if (res.success) {
       if (res.requiresEmailConfirmation) {
-        setNotice('Account created. Check your email to confirm your address, then sign in.');
+        setNotice('Account created! A confirmation email has been sent to your inbox. Check your inbox and click the verification link, then sign in.');
       } else {
         onSuccess();
       }
     } else {
-      setError(res.error || 'Failed to create account.');
+      const errLower = (res.error || '').toLowerCase();
+      if (errLower.includes('already registered') || errLower.includes('already exists')) {
+        setError('This email is already registered in Supabase. Please sign in with your password.');
+      } else if (errLower.includes('rate limit')) {
+        setError('Email dispatch rate limit reached. Please wait 30 seconds before retrying.');
+      } else {
+        setError(res.error || 'Failed to create account.');
+      }
     }
   };
 
@@ -66,24 +74,43 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({
       <div className="mt-6 sm:mx-auto sm:w-full sm:max-w-md px-4">
         <div className="bg-white py-8 px-6 shadow-xl rounded-3xl border border-[#DCE5F0] space-y-5">
           {error && (
-            <div className="p-3.5 rounded-xl bg-red-50 border border-red-200 text-red-800 text-xs flex items-center space-x-2">
-              <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
-              <span>{error}</span>
+            <div className="p-3.5 rounded-xl bg-red-50 border border-red-200 text-red-800 text-xs space-y-2">
+              <div className="flex items-center space-x-2">
+                <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
+                <span>{error}</span>
+              </div>
+              {error.includes('already registered') && (
+                <button
+                  type="button"
+                  onClick={onNavigateToSignIn}
+                  className="w-full py-1.5 px-3 rounded-lg bg-red-100 hover:bg-red-200 text-red-900 font-bold text-xs transition-colors flex items-center justify-center space-x-1"
+                >
+                  <span>Go to Sign In</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </button>
+              )}
             </div>
           )}
 
           {notice && (
-            <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs flex items-center space-x-2">
-              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-              <span>{notice}</span>
+            <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs space-y-2">
+              <div className="flex items-center space-x-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span>{notice}</span>
+              </div>
+              <button
+                type="button"
+                onClick={onNavigateToSignIn}
+                className="w-full py-1.5 px-3 rounded-lg bg-emerald-100 hover:bg-emerald-200 text-emerald-900 font-bold text-xs transition-colors flex items-center justify-center space-x-1"
+              >
+                <span>Proceed to Sign In</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </button>
             </div>
           )}
 
-          {!isSupabaseConnected && (
-            <div className="p-3 rounded-xl bg-[#F2F7FD] border border-[#DCE5F0] text-[11px] text-gray-600">
-              <b>Email/password sign-up is not configured.</b> Add your Supabase project URL and anon key to enable accounts.
-            </div>
-          )}
+          {/* Live Supabase Connection Diagnostic */}
+          <SupabaseDiagnostic />
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>

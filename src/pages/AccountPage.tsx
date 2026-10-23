@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { storageService } from '../services/storageService';
+import { SupabaseDiagnostic } from '../components/SupabaseDiagnostic';
 
 export const AccountPage: React.FC = () => {
   const { profile, updateProfile, signOut, isSupabaseConnected } = useAuth();
@@ -126,6 +127,12 @@ export const AccountPage: React.FC = () => {
             </button>
           </div>
         </form>
+      </div>
+
+      {/* Cloud Backend & Diagnostic */}
+      <div className="space-y-2">
+        <h3 className="text-sm font-bold text-[#123B70]">Supabase Cloud Connection</h3>
+        <SupabaseDiagnostic defaultExpanded={true} />
       </div>
 
       {/* Data Export & Account Safety */}

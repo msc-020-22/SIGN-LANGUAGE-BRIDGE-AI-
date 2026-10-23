@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Mail, Lock, ArrowRight, AlertCircle, Sparkles, Send, CheckCircle2 } from 'lucide-react';
+import { Mail, Lock, ArrowRight, AlertCircle, Send } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { SupabaseDiagnostic } from '../../components/SupabaseDiagnostic';
 
 interface SignInPageProps {
   onSuccess: () => void;
@@ -15,8 +16,10 @@ export const SignInPage: React.FC<SignInPageProps> = ({
   onNavigateToForgotPassword,
   onBackToLanding,
 }) => {
-  const { signIn, signInAsGuest, resendConfirmation, isSupabaseConnected, profile } = useAuth();
-  const [email, setEmail] = useState(profile.email && profile.email !== 'guest@bridge.ai' ? profile.email : 'jonathanzimunya773@gmail.com');
+  const { signIn, resendConfirmation, isSupabaseConnected, profile } = useAuth();
+  const [email, setEmail] = useState(
+    profile.email && profile.email !== 'guest@bridge.ai' ? profile.email : ''
+  );
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isUnconfirmed, setIsUnconfirmed] = useState(false);
@@ -25,8 +28,12 @@ export const SignInPage: React.FC<SignInPageProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email) {
-      setError('Please provide an email address.');
+    if (!email.trim()) {
+      setError('Please provide your email address.');
+      return;
+    }
+    if (!password) {
+      setError('Please provide your password.');
       return;
     }
 
@@ -35,7 +42,7 @@ export const SignInPage: React.FC<SignInPageProps> = ({
     setIsUnconfirmed(false);
     setResendStatus(null);
 
-    const res = await signIn(email, password);
+    const res = await signIn(email.trim(), password);
     setIsSubmitting(false);
 
     if (res.success) {
@@ -59,11 +66,6 @@ export const SignInPage: React.FC<SignInPageProps> = ({
     }
   };
 
-  const handleInstantAccess = () => {
-    signInAsGuest(email || 'jonathanzimunya773@gmail.com');
-    onSuccess();
-  };
-
   return (
     <div className="min-h-screen bg-[#F2F7FD] flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md text-center space-y-2">
@@ -75,9 +77,9 @@ export const SignInPage: React.FC<SignInPageProps> = ({
             <path d="M9 11.24V7.5a2.5 2.5 0 0 1 5 0v3.74c1.21-.81 2-2.18 2-3.74a4.5 4.5 0 0 0-9 0c0 1.56.79 2.93 2 3.74zM18 10h-1.26A6.47 6.47 0 0 1 18 13.5V17a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4v-3.5c0-1.28.37-2.48 1.01-3.5H6a2 2 0 0 0-2 2v5a6 6 0 0 0 6 6h4a6 6 0 0 0 6-6v-5a2 2 0 0 0-2-2z" />
           </svg>
         </button>
-        <h2 className="text-2xl font-black text-[#123B70] tracking-tight">Sign In to SLB AI</h2>
+        <h2 className="text-2xl font-black text-[#123B70] tracking-tight">Sign In with Email</h2>
         <p className="text-xs text-gray-500">
-          Access your communication workspace, history, and learning progress.
+          Enter your registered email and password to access SLB AI.
         </p>
       </div>
 
@@ -102,29 +104,17 @@ export const SignInPage: React.FC<SignInPageProps> = ({
                   {resendStatus && (
                     <p className="text-[11px] text-red-700 font-medium text-center">{resendStatus}</p>
                   )}
+                  <div className="text-[10px] text-gray-600 bg-white/80 p-2 rounded-lg border border-red-200/60 space-y-1">
+                    <p className="font-semibold text-gray-800">To enable immediate password sign-in:</p>
+                    <p>In your <b>Supabase Dashboard</b> → <b>Authentication</b> → <b>Providers</b> → <b>Email</b>, turn <b>Confirm email</b> to <b>OFF</b> and save. Or under <b>Users</b>, click your email and select <b>Confirm User</b>.</p>
+                  </div>
                 </div>
               )}
             </div>
           )}
 
-          {/* Quick Sign-In Option */}
-          <div className="p-3.5 rounded-2xl bg-gradient-to-r from-[#F2F7FD] to-[#e8f1fd] border border-[#2878E5]/30 space-y-2">
-            <div className="flex items-center space-x-2">
-              <Sparkles className="w-4 h-4 text-[#2878E5]" />
-              <span className="text-xs font-bold text-[#123B70]">Quick Access / Demo Login</span>
-            </div>
-            <p className="text-[11px] text-gray-600">
-              Access the full application immediately with local session storage without waiting for email links.
-            </p>
-            <button
-              type="button"
-              onClick={handleInstantAccess}
-              className="w-full py-2 px-3 rounded-xl bg-white hover:bg-[#123B70] text-[#123B70] hover:text-white border border-[#2878E5]/40 text-xs font-bold transition-all shadow-xs flex items-center justify-center space-x-1.5"
-            >
-              <span>Instant Access as {email || 'jonathanzimunya773@gmail.com'}</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </button>
-          </div>
+          {/* Live Supabase Connection Diagnostic */}
+          <SupabaseDiagnostic />
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
@@ -172,7 +162,7 @@ export const SignInPage: React.FC<SignInPageProps> = ({
               disabled={isSubmitting}
               className="w-full py-3 rounded-xl bg-[#123B70] hover:bg-[#2878E5] disabled:opacity-50 text-white font-bold text-xs shadow-md transition-colors flex items-center justify-center space-x-1.5"
             >
-              <span>{isSubmitting ? 'Authenticating with Supabase...' : 'Sign In with Supabase Password'}</span>
+              <span>{isSubmitting ? 'Verifying with Supabase...' : 'Sign In with Email & Password'}</span>
               <ArrowRight className="w-4 h-4" />
             </button>
           </form>
