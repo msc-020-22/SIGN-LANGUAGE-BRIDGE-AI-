@@ -84,17 +84,6 @@ const AppContent: React.FC = () => {
     return <ResetPasswordPage onSuccess={() => setCurrentTab('dashboard')} />;
   }
 
-  if (!user) {
-    return (
-      <LandingPage
-        onStartCommunicating={() => setCurrentTab('signin')}
-        onSignIn={() => setCurrentTab('signin')}
-        onSignUp={() => setCurrentTab('signup')}
-        onLearnMore={() => setCurrentTab('signin')}
-      />
-    );
-  }
-
   // Authenticated workspace shell
   return (
     <div className="min-h-screen bg-[#F2F7FD] flex flex-col">

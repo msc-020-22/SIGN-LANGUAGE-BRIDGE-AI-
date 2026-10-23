@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Mail, Lock, ArrowRight, AlertCircle } from 'lucide-react';
+import { Mail, Lock, ArrowRight, AlertCircle, Sparkles, Send, CheckCircle2 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
 interface SignInPageProps {
@@ -15,10 +15,12 @@ export const SignInPage: React.FC<SignInPageProps> = ({
   onNavigateToForgotPassword,
   onBackToLanding,
 }) => {
-  const { signIn, isSupabaseConnected } = useAuth();
-  const [email, setEmail] = useState('');
+  const { signIn, signInAsGuest, resendConfirmation, isSupabaseConnected, profile } = useAuth();
+  const [email, setEmail] = useState(profile.email && profile.email !== 'guest@bridge.ai' ? profile.email : 'jonathanzimunya773@gmail.com');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [isUnconfirmed, setIsUnconfirmed] = useState(false);
+  const [resendStatus, setResendStatus] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -30,6 +32,8 @@ export const SignInPage: React.FC<SignInPageProps> = ({
 
     setIsSubmitting(true);
     setError(null);
+    setIsUnconfirmed(false);
+    setResendStatus(null);
 
     const res = await signIn(email, password);
     setIsSubmitting(false);
@@ -38,7 +42,26 @@ export const SignInPage: React.FC<SignInPageProps> = ({
       onSuccess();
     } else {
       setError(res.error || 'Failed to sign in.');
+      if (res.isUnconfirmed) {
+        setIsUnconfirmed(true);
+      }
     }
+  };
+
+  const handleResend = async () => {
+    if (!email) return;
+    setResendStatus('Sending confirmation link...');
+    const res = await resendConfirmation(email);
+    if (res.success) {
+      setResendStatus('Confirmation link sent! Check your inbox.');
+    } else {
+      setResendStatus(res.error || 'Failed to resend confirmation email.');
+    }
+  };
+
+  const handleInstantAccess = () => {
+    signInAsGuest(email || 'jonathanzimunya773@gmail.com');
+    onSuccess();
   };
 
   return (
@@ -61,17 +84,47 @@ export const SignInPage: React.FC<SignInPageProps> = ({
       <div className="mt-6 sm:mx-auto sm:w-full sm:max-w-md px-4">
         <div className="bg-white py-8 px-6 shadow-xl rounded-3xl border border-[#DCE5F0] space-y-5">
           {error && (
-            <div className="p-3.5 rounded-xl bg-red-50 border border-red-200 text-red-800 text-xs flex items-center space-x-2">
-              <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
-              <span>{error}</span>
+            <div className="p-3.5 rounded-xl bg-red-50 border border-red-200 text-red-800 text-xs space-y-2">
+              <div className="flex items-start space-x-2">
+                <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+                <span>{error}</span>
+              </div>
+              {isUnconfirmed && (
+                <div className="pt-2 border-t border-red-200 flex flex-col gap-2">
+                  <button
+                    type="button"
+                    onClick={handleResend}
+                    className="w-full py-1.5 px-3 rounded-lg bg-red-100 hover:bg-red-200 text-red-900 font-bold text-xs flex items-center justify-center space-x-1.5 transition-colors"
+                  >
+                    <Send className="w-3.5 h-3.5" />
+                    <span>Resend Confirmation Email</span>
+                  </button>
+                  {resendStatus && (
+                    <p className="text-[11px] text-red-700 font-medium text-center">{resendStatus}</p>
+                  )}
+                </div>
+              )}
             </div>
           )}
 
-          {!isSupabaseConnected && (
-            <div className="p-3 rounded-xl bg-[#F2F7FD] border border-[#DCE5F0] text-[11px] text-gray-600">
-              <b>Email/password sign-in is not configured.</b> Add your Supabase project URL and anon key to enable accounts.
+          {/* Quick Sign-In Option */}
+          <div className="p-3.5 rounded-2xl bg-gradient-to-r from-[#F2F7FD] to-[#e8f1fd] border border-[#2878E5]/30 space-y-2">
+            <div className="flex items-center space-x-2">
+              <Sparkles className="w-4 h-4 text-[#2878E5]" />
+              <span className="text-xs font-bold text-[#123B70]">Quick Access / Demo Login</span>
             </div>
-          )}
+            <p className="text-[11px] text-gray-600">
+              Access the full application immediately with local session storage without waiting for email links.
+            </p>
+            <button
+              type="button"
+              onClick={handleInstantAccess}
+              className="w-full py-2 px-3 rounded-xl bg-white hover:bg-[#123B70] text-[#123B70] hover:text-white border border-[#2878E5]/40 text-xs font-bold transition-all shadow-xs flex items-center justify-center space-x-1.5"
+            >
+              <span>Instant Access as {email || 'jonathanzimunya773@gmail.com'}</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
@@ -119,7 +172,7 @@ export const SignInPage: React.FC<SignInPageProps> = ({
               disabled={isSubmitting}
               className="w-full py-3 rounded-xl bg-[#123B70] hover:bg-[#2878E5] disabled:opacity-50 text-white font-bold text-xs shadow-md transition-colors flex items-center justify-center space-x-1.5"
             >
-              <span>{isSubmitting ? 'Authenticating...' : 'Sign In'}</span>
+              <span>{isSubmitting ? 'Authenticating with Supabase...' : 'Sign In with Supabase Password'}</span>
               <ArrowRight className="w-4 h-4" />
             </button>
           </form>

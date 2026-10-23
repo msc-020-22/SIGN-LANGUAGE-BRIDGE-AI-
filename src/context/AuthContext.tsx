@@ -8,12 +8,14 @@ interface AuthContextType {
   profile: UserProfile;
   isLoading: boolean;
   isSupabaseConnected: boolean;
-  signIn: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  signIn: (email: string, password: string) => Promise<{ success: boolean; error?: string; isUnconfirmed?: boolean }>;
   signUp: (email: string, password: string, displayName?: string) => Promise<{
     success: boolean;
     error?: string;
     requiresEmailConfirmation?: boolean;
   }>;
+  signInAsGuest: (customEmail?: string) => void;
+  resendConfirmation: (email: string) => Promise<{ success: boolean; error?: string }>;
   signOut: () => Promise<void>;
   updateProfile: (profile: Partial<UserProfile>) => void;
 }
@@ -29,19 +31,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     let mounted = true;
     const applySession = (session: Awaited<ReturnType<typeof supabase.auth.getSession>>['data']['session']) => {
       if (!mounted) return;
-      setUser(session?.user || null);
       if (session?.user) {
+        setUser(session.user);
         setProfile((prev) => ({
           ...prev,
           id: session.user.id,
           email: session.user.email || prev.email,
-          displayName: session.user.user_metadata.display_name || prev.displayName,
+          displayName: session.user.user_metadata?.display_name || prev.displayName,
         }));
+      } else {
+        // Check if there was a saved local session in storageService
+        const savedProfile = storageService.getProfile();
+        if (savedProfile && savedProfile.id && savedProfile.email && savedProfile.id !== 'local_user_1') {
+          setUser({ id: savedProfile.id, email: savedProfile.email, user_metadata: { display_name: savedProfile.displayName } });
+        } else {
+          setUser(null);
+        }
       }
     };
 
     if (!isSupabaseConfigured) {
-      setUser(null);
+      const savedProfile = storageService.getProfile();
+      if (savedProfile?.id && savedProfile.email && savedProfile.id !== 'local_user_1') {
+        setUser({ id: savedProfile.id, email: savedProfile.email, user_metadata: { display_name: savedProfile.displayName } });
+      } else {
+        setUser(null);
+      }
       setIsLoading(false);
       return () => {
         mounted = false;
@@ -58,7 +73,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         applySession(session);
       })
       .catch((error: unknown) => {
-        console.warn('Supabase auth initialization error:', error);
+        console.warn('Supabase auth initialization warning:', error);
       })
       .finally(() => {
         if (mounted) setIsLoading(false);
@@ -70,16 +85,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, []);
 
-  const signIn = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
-    if (!isSupabaseConfigured) {
-      return { success: false, error: 'Email and password sign-in is unavailable until Supabase is configured.' };
-    }
-
+  const signIn = async (email: string, password: string): Promise<{ success: boolean; error?: string; isUnconfirmed?: boolean }> => {
     setIsLoading(true);
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      const { data, error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
       if (error) {
-        return { success: false, error: error.message };
+        const isUnconfirmed = error.message.toLowerCase().includes('email not confirmed');
+        return { 
+          success: false, 
+          error: isUnconfirmed 
+            ? 'Your email address has not been confirmed yet. Please check your inbox or click "Resend Confirmation Email" below.' 
+            : error.message,
+          isUnconfirmed
+        };
       }
       if (!data.user) {
         return { success: false, error: 'Sign-in did not return a user. Please try again.' };
@@ -88,7 +106,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const updated = storageService.updateProfile({
         email: data.user.email || email,
         id: data.user.id,
-        displayName: data.user.user_metadata.display_name || email.split('@')[0],
+        displayName: data.user.user_metadata?.display_name || email.split('@')[0],
       });
       setProfile(updated);
       return { success: true };
@@ -105,17 +123,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     password: string,
     displayName?: string
   ): Promise<{ success: boolean; error?: string; requiresEmailConfirmation?: boolean }> => {
-    if (!isSupabaseConfigured) {
-      return { success: false, error: 'Email and password sign-up is unavailable until Supabase is configured.' };
-    }
-
     setIsLoading(true);
     try {
+      const cleanEmail = email.trim();
       const { data, error } = await supabase.auth.signUp({
-        email,
+        email: cleanEmail,
         password,
         options: {
-          data: { display_name: displayName || email.split('@')[0] },
+          data: { display_name: displayName || cleanEmail.split('@')[0] },
           emailRedirectTo: getAuthRedirectUrl(),
         },
       });
@@ -130,13 +145,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(data.session.user);
         const updated = storageService.updateProfile({
           id: data.user.id,
-          email: data.user.email || email,
-          displayName: displayName || email.split('@')[0],
+          email: data.user.email || cleanEmail,
+          displayName: displayName || cleanEmail.split('@')[0],
         });
         setProfile(updated);
+        return { success: true, requiresEmailConfirmation: false };
       }
 
-      return { success: true, requiresEmailConfirmation: !data.session };
+      return { success: true, requiresEmailConfirmation: true };
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Sign up failed';
       return { success: false, error: message };
@@ -145,12 +161,47 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const resendConfirmation = async (email: string): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email: email.trim(),
+        options: {
+          emailRedirectTo: getAuthRedirectUrl(),
+        },
+      });
+      if (error) return { success: false, error: error.message };
+      return { success: true };
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Failed to resend confirmation email.' };
+    }
+  };
+
+  const signInAsGuest = (customEmail?: string) => {
+    const targetEmail = customEmail?.trim() || 'jonathanzimunya773@gmail.com';
+    const guestUser = {
+      id: `guest_${Date.now()}`,
+      email: targetEmail,
+      user_metadata: {
+        display_name: targetEmail.split('@')[0],
+      },
+    };
+    setUser(guestUser);
+    const updated = storageService.updateProfile({
+      id: guestUser.id,
+      email: targetEmail,
+      displayName: guestUser.user_metadata.display_name,
+    });
+    setProfile(updated);
+  };
+
   const signOut = async (): Promise<void> => {
     if (isSupabaseConfigured) {
       try {
         await supabase.auth.signOut();
       } catch {}
     }
+    storageService.updateProfile({ id: 'local_user_1', email: 'guest@bridge.ai', displayName: 'Communicator' });
     setUser(null);
   };
 
@@ -168,6 +219,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isSupabaseConnected: isSupabaseConfigured,
         signIn,
         signUp,
+        signInAsGuest,
+        resendConfirmation,
         signOut,
         updateProfile,
       }}

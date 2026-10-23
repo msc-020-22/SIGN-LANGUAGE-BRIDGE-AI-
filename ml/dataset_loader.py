@@ -8,7 +8,10 @@ Normalizes pixel values from [0, 255] to [0.0, 1.0].
 
 import os
 import csv
-import numpy as np
+try:
+    import numpy as np
+except ImportError:
+    np = None
 from typing import Tuple, Dict, Any
 from ml.class_mapping import label_to_class, NUM_CLASSES, CLASS_NAMES
 
@@ -17,14 +20,16 @@ TRAIN_CSV = os.path.join(DATA_DIR, 'sign_mnist_train.csv')
 TEST_CSV = os.path.join(DATA_DIR, 'sign_mnist_test.csv')
 
 
-def load_csv(filepath: str, max_samples: int = None) -> Tuple[np.ndarray, np.ndarray]:
+def load_csv(filepath: str, max_samples: int = None) -> Tuple[Any, Any]:
     """
     Loads images and labels from a Sign Language MNIST CSV file.
     
     Returns:
-        images: np.ndarray of shape (N, 28, 28, 1), float32, normalized to [0.0, 1.0]
-        labels: np.ndarray of shape (N,), int32, mapped to [0..23] class indices
+        images: np.ndarray or list of shape (N, 28, 28, 1)
+        labels: np.ndarray or list of shape (N,)
     """
+    if np is None:
+        raise ImportError("numpy is required for load_csv pixel array conversion.")
     if not os.path.exists(filepath):
         raise FileNotFoundError(f"Dataset file not found at {filepath}")
 
